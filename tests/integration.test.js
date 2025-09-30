@@ -53,8 +53,8 @@ await runTest('List room types', async () => {
 await runTest('List reservations', async () => {
   const result = await client.listReservations({
     limit: 5,
-    start_check_in_date: '2025-01-01',
-    end_check_in_date: '2025-12-31'
+    start_check_in_date: '2025-09-01',
+    end_check_in_date: '2025-10-31'
   });
   if (!result.data) throw new Error('No data returned');
 });
@@ -87,15 +87,15 @@ await runTest('List webhooks', async () => {
 await runTest('Check availability', async () => {
   // Get first property to test availability
   const properties = await client.listProperties({ limit: 1 });
-  if (!properties.data || properties.data.length === 0) {
+  if (!properties.data || !properties.data.properties || properties.data.properties.length === 0) {
     throw new Error('No properties available for testing');
   }
-  const propertyId = properties.data[0].id;
+  const propertyId = properties.data.properties[0].id;
 
   const result = await client.listAvailabilities({
     property_ids: propertyId.toString(),
-    start_date: '2025-01-01',
-    end_date: '2025-01-07'
+    start_date: '2025-10-01',
+    end_date: '2025-10-07'
   });
   if (!result.data) throw new Error('No data returned');
 });

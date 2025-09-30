@@ -1,6 +1,6 @@
 {
   "name": "hostex-ts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript client library for the Hostex API v3.0.0 (Beta)",
   "type": "module",
   "main": "./dist/index.js",
@@ -8,6 +8,7 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
+      "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },

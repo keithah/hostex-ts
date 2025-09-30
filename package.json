@@ -1,0 +1,43 @@
+{
+  "name": "hostex-ts",
+  "version": "0.1.0",
+  "description": "TypeScript client library for the Hostex API v3.0.0 (Beta)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "test": "npm run build && node tests/integration.test.js"
+  },
+  "keywords": [
+    "hostex",
+    "property-management",
+    "vacation-rental",
+    "api-client",
+    "typescript"
+  ],
+  "author": "Keith Hadfield",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}

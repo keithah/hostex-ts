@@ -264,3 +264,27 @@ export interface CreateReviewData {
   host_review_content?: string;
   host_reply_content?: string;
 }
+
+export interface PostGuestReviewData {
+  reservation_order_code: string;
+  content: string;
+  category_ratings: {
+    recommend: 0 | 1;
+    overall_rating: 1 | 2 | 3 | 4 | 5;
+    cleanliness: 1 | 2 | 3 | 4 | 5;
+    cleanliness_content?: string;
+    respect_of_house_rules: 1 | 2 | 3 | 4 | 5;
+    respect_house_rules_content?: string;
+    communication: 1 | 2 | 3 | 4 | 5;
+    communication_content?: string;
+  };
+}
+
+export interface LoginData {
+  account: string;
+  password: string;
+  image_code?: string;
+  dynamic_code?: string;
+  login_type?: 'password' | 'code';
+  locale?: string;
+}

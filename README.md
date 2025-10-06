@@ -177,6 +177,22 @@ await client.createReview('reservation_code', {
 await client.createReview('reservation_code', {
   host_reply_content: 'Thank you for the wonderful review!'
 });
+
+// Post a guest review (requires operatorId in client config)
+await client.postGuestReview({
+  reservation_order_code: '0-ABC123-xyz',
+  content: 'Great guest, would host again!',
+  category_ratings: {
+    recommend: 1, // 1 = would recommend, 0 = would not
+    overall_rating: 5, // 1-5 scale
+    cleanliness: 5,
+    cleanliness_content: '',
+    respect_of_house_rules: 5,
+    respect_house_rules_content: '',
+    communication: 5,
+    communication_content: ''
+  }
+});
 ```
 
 ### Webhooks
@@ -253,9 +269,24 @@ try {
 const client = new HostexClient({
   accessToken: 'your_token',
   baseUrl: 'https://api.hostex.io/v3', // Optional, uses default
+  webAppBaseUrl: 'https://hostex.io/api', // Optional, for web app API endpoints
+  operatorId: 'your_operator_id', // Optional, required for review posting
   timeout: 30000 // Optional, request timeout in ms (default: 30000)
 });
 ```
+
+### Finding Your Operator ID
+
+The operator ID is required for posting guest reviews. To find it:
+
+1. Log into [https://hostex.io](https://hostex.io)
+2. Open browser DevTools (F12)
+3. Go to the Network tab
+4. Navigate to any page in Hostex (e.g., Dashboard, Reviews)
+5. Click on any API request in the Network tab
+6. The operator ID appears as:
+   - **Query parameter**: `opid=YOUR_OPERATOR_ID`
+   - **Response header**: `hostex-operator: YOUR_OPERATOR_ID`
 
 ## API Reference
 

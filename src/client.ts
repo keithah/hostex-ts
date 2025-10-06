@@ -27,6 +27,8 @@ import {
   SendMessageData,
   ListReviewsParams,
   CreateReviewData,
+  PostGuestReviewData,
+  LoginData,
 } from './types.js';
 import {
   InvalidConfigError,
@@ -38,13 +40,18 @@ import {
 export interface HostexClientConfig {
   accessToken: string;
   baseUrl?: string;
+  webAppBaseUrl?: string;
+  operatorId?: string;
   timeout?: number;
 }
 
 export class HostexClient {
   private accessToken: string;
   private baseUrl: string;
+  private webAppBaseUrl: string;
+  private operatorId: string;
   private timeout: number;
+  private sessionCookies: string = '';
 
   constructor(config: HostexClientConfig) {
     if (!config.accessToken) {
@@ -52,6 +59,8 @@ export class HostexClient {
     }
     this.accessToken = config.accessToken;
     this.baseUrl = config.baseUrl || 'https://api.hostex.io/v3';
+    this.webAppBaseUrl = config.webAppBaseUrl || 'https://hostex.io/api';
+    this.operatorId = config.operatorId || '';
     this.timeout = config.timeout || 30000;
   }
 
@@ -106,6 +115,111 @@ export class HostexClient {
       // Handle successful responses
       if (response.ok && data.error_code === 200) {
         return data;
+      }
+
+      // Handle API errors
+      const errorCode = data.error_code || response.status;
+      const errorMsg = data.error_msg || response.statusText || 'Unknown error';
+      const requestId = data.request_id;
+
+      throw getErrorForCode(errorCode, errorMsg, {
+        error_code: errorCode,
+        request_id: requestId,
+        response_data: data,
+      });
+    } catch (error) {
+      // Handle timeout errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new TimeoutError(`Request timed out after ${this.timeout}ms`);
+      }
+
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new ConnectionError(`Connection error: ${error.message}`);
+      }
+
+      // Re-throw if already a Hostex error
+      if (error instanceof Error && error.constructor.name.includes('Error')) {
+        throw error;
+      }
+
+      throw new ConnectionError('Unknown error occurred');
+    }
+  }
+
+  private async webAppRequest<T>(
+    method: string,
+    endpoint: string,
+    params?: Record<string, any>,
+    body?: any,
+    extractCookies: boolean = false
+  ): Promise<HostexAPIResponse<T>> {
+    const url = new URL(`${this.webAppBaseUrl}${endpoint}`);
+
+    // Add query parameters including operator ID and client
+    const allParams = {
+      ...params,
+      opid: this.operatorId,
+      opclient: 'Web-Mac-Chrome',
+    };
+
+    Object.entries(allParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.append(key, String(value));
+      }
+    });
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'hostex-ts/0.1.0',
+    };
+
+    // Include session cookies if available
+    if (this.sessionCookies) {
+      headers['Cookie'] = this.sessionCookies;
+    }
+
+    const options: RequestInit = {
+      method,
+      headers,
+      signal: AbortSignal.timeout(this.timeout),
+    };
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    try {
+      const response = await fetch(url.toString(), options);
+
+      // Extract and store cookies from response if requested
+      if (extractCookies) {
+        const setCookieHeaders = response.headers.getSetCookie?.() || [];
+        if (setCookieHeaders.length > 0) {
+          // Extract cookie names and values, ignoring attributes
+          this.sessionCookies = setCookieHeaders
+            .map(header => header.split(';')[0])
+            .join('; ');
+        }
+      }
+
+      // Parse response
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        data = {
+          error_msg: response.statusText || 'Unknown error',
+          error_code: response.status
+        };
+      }
+
+      // Web app API uses error_code 0 for success
+      if (response.ok && data.error_code === 0) {
+        return {
+          ...data,
+          error_code: 200, // Normalize to standard API format
+        };
       }
 
       // Handle API errors
@@ -257,6 +371,30 @@ export class HostexClient {
     data: CreateReviewData
   ): Promise<HostexAPIResponse> {
     return this.request('POST', `/reviews/${reservationCode}`, undefined, data);
+  }
+
+  async login(data: LoginData): Promise<HostexAPIResponse> {
+    const loginData = {
+      account: data.account,
+      password: data.password,
+      image_code: data.image_code || '',
+      dynamic_code: data.dynamic_code || '',
+      login_type: data.login_type || 'password',
+      locale: data.locale || 'en',
+    };
+
+    const result = await this.webAppRequest<any>('POST', '/v2/user/login', undefined, loginData, true);
+
+    // After successful login, extract operator ID from response if available
+    if (result.data && (result.data as any).operator_id) {
+      this.operatorId = String((result.data as any).operator_id);
+    }
+
+    return result;
+  }
+
+  async postGuestReview(data: PostGuestReviewData): Promise<HostexAPIResponse> {
+    return this.webAppRequest('POST', '/reservation_comment/send_comment', undefined, data);
   }
 
   // Webhooks
